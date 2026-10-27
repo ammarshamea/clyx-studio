@@ -1,20 +1,23 @@
-import { m } from "framer-motion";
-import { useEffect, useState, type RefObject } from "react";
+import { animate, useMotionValue, useMotionValueEvent, type AnimationPlaybackControls } from "framer-motion";
+import { useEffect, useRef, useState, type RefObject } from "react";
+import {
+  BOTTOM_HINGE,
+  clapperCloseAngle,
+  TOP_HINGE,
+} from "../../brand/logoClapper";
 import { LOGO_SYMBOL, LOGO_VIEWBOX, type LogoShape } from "../../brand/logo";
 import { LogoGradients, LogoShapeElement, svgLabel, useLogoPrefix } from "./parts";
-
-/** Top clapper arm pivots on the shared inner vertex (arm-top tip). */
-const HINGE = { x: 889.92, y: 748.7 };
-const SPARK_AT = { x: 1480, y: 756 };
 
 const LOOP = 4;
 const LAND = 0.28;
 type Bezier = [number, number, number, number];
 const LINEAR: Bezier = [0, 0, 1, 1];
-const EASE_IN: Bezier = [0.55, 0, 1, 1];
-const EASE_CLOSE: Bezier = [0.72, 0, 0.98, 0.12];
-const EASE_HIT: Bezier = [0.16, 1, 0.3, 1];
+const EASE_OUT: Bezier = [0.16, 1, 0.3, 1];
+const EASE_SNAP: Bezier = [0.82, 0, 0.98, 0.05];
 const SOFT: Bezier = [0.33, 1, 0.68, 1];
+
+/** Symmetric close (~24.3°): inner edges meet at the hub seam. */
+const CLOSE = clapperCloseAngle();
 
 function shape(id: string): LogoShape {
   const found = LOGO_SYMBOL.find((item) => item.id === id);
@@ -25,7 +28,6 @@ function shape(id: string): LogoShape {
 function useHeroState(section: RefObject<HTMLElement | null>) {
   const [inView, setInView] = useState(true);
   const [tabVisible, setTabVisible] = useState(() => document.visibilityState !== "hidden");
-  const [compact, setCompact] = useState(false);
 
   useEffect(() => {
     const node = section.current;
@@ -41,38 +43,33 @@ function useHeroState(section: RefObject<HTMLElement | null>) {
     return () => document.removeEventListener("visibilitychange", onVisibility);
   }, []);
 
-  useEffect(() => {
-    const narrow = window.matchMedia("(max-width: 767px)");
-    const sync = () => setCompact(narrow.matches);
-    sync();
-    narrow.addEventListener("change", sync);
-    return () => narrow.removeEventListener("change", sync);
-  }, []);
-
-  return { inView, tabVisible, compact };
+  return { inView, tabVisible };
 }
 
-function loopOf(times: number[], ease: Bezier[]) {
-  return {
-    duration: LOOP,
-    times,
-    ease,
-    repeat: Infinity,
-    delay: LAND,
-  };
-}
+type PivotArmProps = {
+  hinge: { x: number; y: number };
+  logoShape: LogoShape;
+  prefix: string;
+  rotation: ReturnType<typeof useMotionValue<number>>;
+};
 
-function around(hinge: { x: number; y: number }) {
-  return ({
-    rotate = "0deg",
-    scaleY = "1",
-    x = 0,
-  }: {
-    rotate?: string | number;
-    scaleY?: string | number;
-    x?: string | number;
-  }) =>
-    `translate(${hinge.x}px, ${hinge.y}px) scale(1, ${scaleY}) rotate(${rotate}) translate(${-hinge.x}px, ${-hinge.y}px) translate(${x}px, 0)`;
+/** SVG pivot: translate(hinge) → rotate(θ) → untranslate; tip stays fixed. */
+function PivotArm({ hinge, logoShape, prefix, rotation }: PivotArmProps) {
+  const rotateRef = useRef<SVGGElement>(null);
+
+  useMotionValueEvent(rotation, "change", (angle) => {
+    rotateRef.current?.setAttribute("transform", `rotate(${angle})`);
+  });
+
+  return (
+    <g transform={`translate(${hinge.x} ${hinge.y})`}>
+      <g ref={rotateRef} transform="rotate(0)">
+        <g transform={`translate(${-hinge.x} ${-hinge.y})`}>
+          <LogoShapeElement shape={logoShape} prefix={prefix} />
+        </g>
+      </g>
+    </g>
+  );
 }
 
 export type HeroLogoProps = {
@@ -84,18 +81,38 @@ export type HeroLogoProps = {
 
 export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
   const prefix = useLogoPrefix();
-  const { inView, tabVisible, compact } = useHeroState(section);
+  const { inView, tabVisible } = useHeroState(section);
   const active = live && inView && tabVisible;
-  const open = compact ? 28 : 32;
-  const rest = { duration: 0.32, ease: SOFT };
 
-  const top = shape("arm-top");
-  const rotateTimes = [0, 0.14, 0.2, 0.38, 0.48, 0.545, 0.575, 0.7, 1];
-  const rotateEase = [LINEAR, EASE_IN, SOFT, LINEAR, EASE_CLOSE, EASE_HIT, SOFT, LINEAR];
-  const squashTimes = [0, 0.545, 0.565, 0.62, 1];
-  const squashEase = [LINEAR, EASE_HIT, SOFT, LINEAR];
-  const shakeTimes = [0, 0.545, 0.555, 0.565, 0.575, 1];
-  const shakeEase = [LINEAR, EASE_CLOSE, LINEAR, SOFT, LINEAR];
+  const topRotation = useMotionValue(0);
+  const bottomRotation = useMotionValue(0);
+
+  useEffect(() => {
+    const rotateTimes = [0, 0.12, 0.38, 0.46, 0.56, 1];
+    const rotateEase = [LINEAR, EASE_OUT, EASE_SNAP, LINEAR, EASE_OUT];
+    const topKeys = [0, 0, CLOSE * 0.86, CLOSE, CLOSE, 0];
+    const bottomKeys = [0, 0, -CLOSE * 0.86, -CLOSE, -CLOSE, 0];
+
+    let controls: AnimationPlaybackControls[] = [];
+
+    if (!active) {
+      controls = [
+        animate(topRotation, 0, { duration: 0.32, ease: SOFT }),
+        animate(bottomRotation, 0, { duration: 0.32, ease: SOFT }),
+      ];
+    } else {
+      const shared = {
+        duration: LOOP,
+        times: rotateTimes,
+        ease: rotateEase,
+        repeat: Infinity,
+        delay: LAND,
+      };
+      controls = [animate(topRotation, topKeys, shared), animate(bottomRotation, bottomKeys, shared)];
+    }
+
+    return () => controls.forEach((c) => c.stop());
+  }, [active, topRotation, bottomRotation]);
 
   return (
     <svg viewBox={LOGO_VIEWBOX} className={className} direction="ltr" overflow="visible" {...svgLabel(title)}>
@@ -104,51 +121,10 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
       </defs>
 
       <LogoShapeElement shape={shape("wedge-lower")} prefix={prefix} />
-
-      <m.g
-        initial={false}
-        animate={
-          active
-            ? {
-                rotate: [0, 0, 4, -open, -open, 3, 0, -open * 0.35, 0],
-                scaleY: [1, 1, 1, 1, 1, 0.92, 1, 1, 1],
-                x: [0, 0, 0, 0, 0, -2.5, 2, 0, 0],
-              }
-            : { rotate: 0, scaleY: 1, x: 0 }
-        }
-        transition={
-          active
-            ? {
-                rotate: loopOf(rotateTimes, rotateEase),
-                scaleY: loopOf(squashTimes, squashEase),
-                x: loopOf(shakeTimes, shakeEase),
-              }
-            : rest
-        }
-        transformTemplate={around(HINGE)}
-      >
-        <LogoShapeElement shape={top} prefix={prefix} />
-      </m.g>
-
+      <PivotArm hinge={TOP_HINGE} logoShape={shape("arm-top")} prefix={prefix} rotation={topRotation} />
       <LogoShapeElement shape={shape("wedge-upper")} prefix={prefix} />
-      <LogoShapeElement shape={shape("arm-bottom")} prefix={prefix} />
-
+      <PivotArm hinge={BOTTOM_HINGE} logoShape={shape("arm-bottom")} prefix={prefix} rotation={bottomRotation} />
       <LogoShapeElement shape={shape("ring")} prefix={prefix} />
-
-      <m.g
-        pointerEvents="none"
-        initial={false}
-        animate={active ? { opacity: [0, 0, 1, 0, 0], scale: [0.45, 0.45, 1.08, 0.7, 0.45] } : { opacity: 0, scale: 0.45 }}
-        transition={active ? loopOf([0, 0.545, 0.565, 0.62, 1], [LINEAR, EASE_HIT, SOFT, LINEAR]) : rest}
-        transformTemplate={({ scale = 1 }) =>
-          `translate(${SPARK_AT.x}px, ${SPARK_AT.y}px) scale(${scale}) translate(${-SPARK_AT.x}px, ${-SPARK_AT.y}px)`
-        }
-        style={{ mixBlendMode: "plus-lighter" }}
-      >
-        <polygon points="1240,750 1760,756 1240,762" fill="#F5F2F5" />
-        <polygon points="1360,756 1680,734 1440,756" fill="#C43A8A" />
-        <polygon points="1360,756 1680,778 1440,756" fill="#C43A8A" />
-      </m.g>
     </svg>
   );
 }
