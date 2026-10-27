@@ -1,12 +1,9 @@
-import { m } from "framer-motion";
-import { useEffect, useState, type RefObject } from "react";
+import { animate, useMotionValue, useMotionValueEvent, type AnimationPlaybackControls } from "framer-motion";
+import { useEffect, useRef, useState, type RefObject } from "react";
 import { LOGO_SYMBOL, LOGO_VIEWBOX, type LogoShape } from "../../brand/logo";
 import { LogoGradients, LogoShapeElement, svgLabel, useLogoPrefix } from "./parts";
 
-/**
- * Long right bars: `arm-top` / `arm-bottom`. Each pivots on its inner-left tip;
- * those hinge points stay fixed in SVG space (translate–rotate–untranslate only).
- */
+/** Inner-left tips of the long bars (verbatim from logo geometry). */
 const TOP_HINGE = { x: 889.92, y: 748.7 };
 const BOTTOM_HINGE = { x: 889.92, y: 763.27 };
 
@@ -54,20 +51,30 @@ function useHeroState(section: RefObject<HTMLElement | null>) {
   return { inView, tabVisible, compact };
 }
 
-function loopOf(times: number[], ease: Bezier[]) {
-  return {
-    duration: LOOP,
-    times,
-    ease,
-    repeat: Infinity,
-    delay: LAND,
-  };
-}
+type PivotArmProps = {
+  hinge: { x: number; y: number };
+  logoShape: LogoShape;
+  prefix: string;
+  rotation: ReturnType<typeof useMotionValue<number>>;
+};
 
-/** Rotation only; pivot fixed at hinge in userSpaceOnUse coordinates. */
-function pivotAt(hinge: { x: number; y: number }) {
-  return ({ rotate = "0deg" }: { rotate?: string | number }) =>
-    `translate(${hinge.x}px, ${hinge.y}px) rotate(${rotate}) translate(${-hinge.x}px, ${-hinge.y}px)`;
+/** SVG user-space pivot: outer translate → rotate(angle) → inner untranslate. */
+function PivotArm({ hinge, logoShape, prefix, rotation }: PivotArmProps) {
+  const rotateRef = useRef<SVGGElement>(null);
+
+  useMotionValueEvent(rotation, "change", (angle) => {
+    rotateRef.current?.setAttribute("transform", `rotate(${angle})`);
+  });
+
+  return (
+    <g transform={`translate(${hinge.x} ${hinge.y})`}>
+      <g ref={rotateRef} transform="rotate(0)">
+        <g transform={`translate(${-hinge.x} ${-hinge.y})`}>
+          <LogoShapeElement shape={logoShape} prefix={prefix} />
+        </g>
+      </g>
+    </g>
+  );
 }
 
 export type HeroLogoProps = {
@@ -81,21 +88,37 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
   const prefix = useLogoPrefix();
   const { inView, tabVisible, compact } = useHeroState(section);
   const active = live && inView && tabVisible;
-  /** Degrees to swing inward from resting artwork until the bars meet. */
   const close = compact ? 11.5 : 13.2;
-  const rest = { duration: 0.32, ease: SOFT };
 
-  const top = shape("arm-top");
-  const bottom = shape("arm-bottom");
+  const topRotation = useMotionValue(0);
+  const bottomRotation = useMotionValue(0);
 
-  // Rest (0°) → smooth close → fast snap shut → hold → smooth reopen → rest
-  const rotateTimes = [0, 0.12, 0.38, 0.46, 0.56, 1];
-  const rotateEase = [LINEAR, EASE_OUT, EASE_SNAP, LINEAR, EASE_OUT];
+  useEffect(() => {
+    const rotateTimes = [0, 0.12, 0.38, 0.46, 0.56, 1];
+    const rotateEase = [LINEAR, EASE_OUT, EASE_SNAP, LINEAR, EASE_OUT];
+    const topKeys = [0, 0, close * 0.82, close, close, 0];
+    const bottomKeys = [0, 0, -close * 0.82, -close, -close, 0];
 
-  const topRotate = [0, 0, close * 0.82, close, close, 0];
-  const bottomRotate = [0, 0, -close * 0.82, -close, -close, 0];
+    let controls: AnimationPlaybackControls[] = [];
 
-  const rotateTransition = active ? loopOf(rotateTimes, rotateEase) : rest;
+    if (!active) {
+      controls = [
+        animate(topRotation, 0, { duration: 0.32, ease: SOFT }),
+        animate(bottomRotation, 0, { duration: 0.32, ease: SOFT }),
+      ];
+    } else {
+      const shared = {
+        duration: LOOP,
+        times: rotateTimes,
+        ease: rotateEase,
+        repeat: Infinity,
+        delay: LAND,
+      };
+      controls = [animate(topRotation, topKeys, shared), animate(bottomRotation, bottomKeys, shared)];
+    }
+
+    return () => controls.forEach((c) => c.stop());
+  }, [active, close, topRotation, bottomRotation]);
 
   return (
     <svg viewBox={LOGO_VIEWBOX} className={className} direction="ltr" overflow="visible" {...svgLabel(title)}>
@@ -104,27 +127,9 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
       </defs>
 
       <LogoShapeElement shape={shape("wedge-lower")} prefix={prefix} />
-
-      <m.g
-        initial={false}
-        animate={active ? { rotate: topRotate } : { rotate: 0 }}
-        transition={{ rotate: rotateTransition }}
-        transformTemplate={pivotAt(TOP_HINGE)}
-      >
-        <LogoShapeElement shape={top} prefix={prefix} />
-      </m.g>
-
+      <PivotArm hinge={TOP_HINGE} logoShape={shape("arm-top")} prefix={prefix} rotation={topRotation} />
       <LogoShapeElement shape={shape("wedge-upper")} prefix={prefix} />
-
-      <m.g
-        initial={false}
-        animate={active ? { rotate: bottomRotate } : { rotate: 0 }}
-        transition={{ rotate: rotateTransition }}
-        transformTemplate={pivotAt(BOTTOM_HINGE)}
-      >
-        <LogoShapeElement shape={bottom} prefix={prefix} />
-      </m.g>
-
+      <PivotArm hinge={BOTTOM_HINGE} logoShape={shape("arm-bottom")} prefix={prefix} rotation={bottomRotation} />
       <LogoShapeElement shape={shape("ring")} prefix={prefix} />
     </svg>
   );
