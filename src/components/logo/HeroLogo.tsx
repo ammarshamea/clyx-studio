@@ -1,7 +1,6 @@
 import { m } from "framer-motion";
 import { useEffect, useState, type RefObject } from "react";
 import { LOGO_SYMBOL, LOGO_VIEWBOX, type LogoShape } from "../../brand/logo";
-import { EASE_SOFT } from "../../motion/tokens";
 import { LogoGradients, LogoShapeElement, svgLabel, useLogoPrefix } from "./parts";
 
 /** Each large right arm pivots on its own inner vertex. */
@@ -11,10 +10,12 @@ const SPARK_AT = { x: 1480, y: 756 };
 
 const LOOP = 4;
 const LAND = 0.28;
-const LINEAR = [0, 0, 1, 1] as const;
-const EASE_IN = [0.55, 0, 1, 1] as const;
-const EASE_CLOSE = [0.72, 0, 0.98, 0.12] as const;
-const EASE_HIT = [0.16, 1, 0.3, 1] as const;
+type Bezier = [number, number, number, number];
+const LINEAR: Bezier = [0, 0, 1, 1];
+const EASE_IN: Bezier = [0.55, 0, 1, 1];
+const EASE_CLOSE: Bezier = [0.72, 0, 0.98, 0.12];
+const EASE_HIT: Bezier = [0.16, 1, 0.3, 1];
+const SOFT: Bezier = [0.33, 1, 0.68, 1];
 
 function shape(id: string): LogoShape {
   const found = LOGO_SYMBOL.find((item) => item.id === id);
@@ -52,7 +53,7 @@ function useHeroState(section: RefObject<HTMLElement | null>) {
   return { inView, tabVisible, compact };
 }
 
-function loopOf(times: number[], ease: ReadonlyArray<readonly number[]>) {
+function loopOf(times: number[], ease: Bezier[]) {
   return {
     duration: LOOP,
     times,
@@ -80,14 +81,14 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
   const active = live && inView && tabVisible;
   const spread = compact ? 12 : 16;
   const clap = compact ? 22 : 24;
-  const rest = { duration: 0.32, ease: EASE_SOFT };
+  const rest = { duration: 0.32, ease: SOFT };
 
   const top = shape("arm-top");
   const bottom = shape("arm-bottom");
   const rotateTimes = [0, 0.16, 0.24, 0.4, 0.5, 0.575, 0.61, 0.76, 1];
-  const rotateEase = [LINEAR, EASE_IN, EASE_SOFT, LINEAR, EASE_CLOSE, LINEAR, EASE_SOFT, LINEAR];
+  const rotateEase = [LINEAR, EASE_IN, SOFT, LINEAR, EASE_CLOSE, LINEAR, SOFT, LINEAR];
   const squashTimes = [0, 0.575, 0.605, 0.68, 1];
-  const squashEase = [LINEAR, EASE_HIT, EASE_SOFT, LINEAR];
+  const squashEase = [LINEAR, EASE_HIT, SOFT, LINEAR];
 
   return (
     <svg viewBox={LOGO_VIEWBOX} className={className} direction="ltr" overflow="visible" {...svgLabel(title)}>
@@ -131,7 +132,7 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
         pointerEvents="none"
         initial={false}
         animate={active ? { opacity: [0, 0, 1, 0, 0], scale: [0.45, 0.45, 1.08, 0.7, 0.45] } : { opacity: 0, scale: 0.45 }}
-        transition={active ? loopOf([0, 0.57, 0.59, 0.68, 1], [LINEAR, EASE_HIT, EASE_SOFT, LINEAR]) : rest}
+        transition={active ? loopOf([0, 0.57, 0.59, 0.68, 1], [LINEAR, EASE_HIT, SOFT, LINEAR]) : rest}
         transformTemplate={({ scale = 1 }) =>
           `translate(${SPARK_AT.x}px, ${SPARK_AT.y}px) scale(${scale}) translate(${-SPARK_AT.x}px, ${-SPARK_AT.y}px)`
         }
