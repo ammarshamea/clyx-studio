@@ -234,7 +234,7 @@ textarea:focus-visible,
   width: min(100%, 23rem);
   aspect-ratio: 1;
   justify-self: center;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .hero-stage {

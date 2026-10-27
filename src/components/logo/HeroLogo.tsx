@@ -1,36 +1,21 @@
-import { m, type Variants } from "framer-motion";
+import { m } from "framer-motion";
 import { useEffect, useState, type RefObject } from "react";
 import { LOGO_SYMBOL, LOGO_VIEWBOX } from "../../brand/logo";
-import { EASE_IN_OUT, EASE_OUT, HERO_CYCLE, HERO_TRAVEL } from "../../motion/tokens";
-import { SYMBOL_ENTRY } from "./IntroLogo";
+import { EASE_IN_OUT, EASE_SOFT } from "../../motion/tokens";
 import { LogoGradients, LogoShapeElement, svgLabel, useLogoPrefix } from "./parts";
 
-const AMPLITUDE = 0.28;
-const AMPLITUDE_COMPACT = 0.22;
-const HOLD_AFTER_LAND = 0.45;
+/** Junction of the two arms — the clapper hinge. */
+const HINGE = { x: 889.92, y: 756 };
+const STICK = new Set(["arm-top", "wedge-upper"]);
 
-type Pose = "together" | "apart";
+const HOLD_AFTER_LAND = 0.5;
+const OPEN_FOR = 0.78;
+const HOLD_OPEN = 0.42;
+const SNAP_FOR = 0.18;
+const HOLD_SHUT = 1.9;
+const EASE_SNAP = [0.62, 0, 0.98, 0.18] as const;
 
-function fragmentVariants(amp: number): Variants {
-  return {
-    together: {
-      x: 0,
-      y: 0,
-      rotate: 0,
-      scale: 1,
-      opacity: 1,
-      filter: "blur(0px)",
-    },
-    apart: (from: (typeof SYMBOL_ENTRY)[string]) => ({
-      x: from.x * amp,
-      y: from.y * amp,
-      rotate: from.rotate * amp,
-      scale: from.scale,
-      opacity: 1,
-      filter: "blur(12px)",
-    }),
-  };
-}
+type Pose = "shut" | "open";
 
 function useHeroState(section: RefObject<HTMLElement | null>) {
   const [inView, setInView] = useState(true);
@@ -73,38 +58,53 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
   const prefix = useLogoPrefix();
   const { inView, tabVisible, compact } = useHeroState(section);
   const active = live && inView && tabVisible;
-  const amp = compact ? AMPLITUDE_COMPACT : AMPLITUDE;
-  const variants = fragmentVariants(amp);
-  const [pose, setPose] = useState<Pose>("together");
+  const openDeg = compact ? -14 : -18;
+  const [pose, setPose] = useState<Pose>("shut");
   const [hasOpened, setHasOpened] = useState(false);
 
   useEffect(() => {
     if (!active) {
-      setPose("together");
+      setPose("shut");
       setHasOpened(false);
       return;
     }
 
-    setPose("together");
+    setPose("shut");
     setHasOpened(false);
+    const timers: number[] = [];
+    let cancelled = false;
 
-    let loop = 0;
-    const startForward = window.setTimeout(() => {
-      setPose("apart");
+    const clap = () => {
+      if (cancelled) return;
+      setPose("open");
       setHasOpened(true);
-      loop = window.setInterval(() => {
-        setPose((current) => (current === "together" ? "apart" : "together"));
-      }, HERO_CYCLE * 1000);
-    }, HOLD_AFTER_LAND * 1000);
+      timers.push(
+        window.setTimeout(() => {
+          if (cancelled) return;
+          setPose("shut");
+          timers.push(window.setTimeout(clap, (SNAP_FOR + HOLD_SHUT) * 1000));
+        }, (OPEN_FOR + HOLD_OPEN) * 1000),
+      );
+    };
+
+    timers.push(window.setTimeout(clap, HOLD_AFTER_LAND * 1000));
 
     return () => {
-      window.clearTimeout(startForward);
-      window.clearInterval(loop);
+      cancelled = true;
+      timers.forEach((id) => window.clearTimeout(id));
     };
   }, [active]);
 
+  const stickTransition =
+    pose === "open"
+      ? { duration: OPEN_FOR, ease: EASE_SOFT }
+      : { duration: SNAP_FOR, ease: EASE_SNAP };
+
+  const slate = LOGO_SYMBOL.filter((shape) => !STICK.has(shape.id));
+  const stick = LOGO_SYMBOL.filter((shape) => STICK.has(shape.id));
+
   return (
-    <svg viewBox={LOGO_VIEWBOX} className={className} direction="ltr" overflow="hidden" {...svgLabel(title)}>
+    <svg viewBox={LOGO_VIEWBOX} className={className} direction="ltr" overflow="visible" {...svgLabel(title)}>
       <defs>
         <LogoGradients prefix={prefix} shapes={LOGO_SYMBOL} />
         <clipPath id={`${prefix}-symbol`}>
@@ -119,31 +119,22 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
         </linearGradient>
       </defs>
 
-      {LOGO_SYMBOL.map((shape) => {
-        const from = SYMBOL_ENTRY[shape.id];
-        const assembling = pose === "together";
-        return (
-          <m.g
-            key={shape.id}
-            custom={from}
-            variants={variants}
-            initial="together"
-            animate={active ? pose : "together"}
-            transition={{
-              delay: from.at * 0.55,
-              duration: HERO_TRAVEL,
-              ease: EASE_OUT,
-              filter: {
-                delay: from.at * 0.55,
-                duration: assembling ? HERO_TRAVEL * 0.4 : HERO_TRAVEL * 0.5,
-                ease: "linear",
-              },
-            }}
-          >
-            <LogoShapeElement shape={shape} prefix={prefix} />
-          </m.g>
-        );
-      })}
+      {slate.map((shape) => (
+        <LogoShapeElement key={shape.id} shape={shape} prefix={prefix} />
+      ))}
+
+      <m.g
+        initial={false}
+        animate={{ rotate: active && pose === "open" ? openDeg : 0 }}
+        transition={stickTransition}
+        transformTemplate={({ rotate }) =>
+          `translate(${HINGE.x}px, ${HINGE.y}px) rotate(${rotate}) translate(${-HINGE.x}px, ${-HINGE.y}px)`
+        }
+      >
+        {stick.map((shape) => (
+          <LogoShapeElement key={shape.id} shape={shape} prefix={prefix} />
+        ))}
+      </m.g>
 
       <g clipPath={`url(#${prefix}-symbol)`} pointerEvents="none">
         <g transform="skewX(-18)">
@@ -154,9 +145,9 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
             fill={`url(#${prefix}-sheen)`}
             initial={{ x: -700, opacity: 0 }}
             animate={
-              active && pose === "together" && hasOpened
-                ? { x: 2900, opacity: 1, transition: { duration: 0.5, delay: 0.08, ease: EASE_IN_OUT } }
-                : { x: -700, opacity: 0, transition: { duration: 0.2 } }
+              active && pose === "shut" && hasOpened
+                ? { x: 2900, opacity: 1, transition: { duration: 0.38, delay: 0.02, ease: EASE_IN_OUT } }
+                : { x: -700, opacity: 0, transition: { duration: 0.15 } }
             }
           />
         </g>

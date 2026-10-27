@@ -13,7 +13,7 @@ export type ClyxAnimatedLogoProps =
 
 /**
  * intro: five symbol shapes and ten letters assemble, each on its own timing.
- * hero: symbol only, intro fragment paths loop 5s out then reverse.
+ * hero: symbol only, clapperboard open then snap shut.
  * decorative: slow drift of the symbol shapes while in view.
  * static / reduced: the original artwork with no motion.
  */
