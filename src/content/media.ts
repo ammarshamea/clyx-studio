@@ -5,7 +5,7 @@ export type ImageAsset = {
   height: number;
 };
 
-const FOLDER = "/images/clyx";
+const FOLDER = `${import.meta.env.BASE_URL}images/clyx`;
 
 function image(name: string, width: number, height: number): ImageAsset {
   const small = Math.round((width * 960) / Math.max(width, height));
