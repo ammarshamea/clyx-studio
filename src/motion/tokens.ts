@@ -13,10 +13,7 @@ export const STAGGER = {
   base: 0.08,
 } as const;
 
-export const INTRO_SECONDS = {
-  desktop: 2.8,
-  mobile: 1.8,
-} as const;
+export const INTRO_SECONDS = 2.8;
 
 export const HERO_CYCLE = 3;
 export const HERO_TRAVEL = 1.7;

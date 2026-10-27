@@ -5,12 +5,10 @@ import { EASE_IN_OUT, EASE_OUT } from "../motion/tokens";
 import { ClyxAnimatedLogo } from "./logo/ClyxAnimatedLogo";
 import type { IntroStage } from "./logo/IntroLogo";
 
-/** Seconds on the desktop timeline. Narrow screens scale every value by MOBILE_SCALE. */
 const HOLD_UNTIL = 2.12;
 const TRAVEL_DELAY = 0.12;
 const TRAVEL = 0.56;
 const SKIP_TRAVEL = 0.45;
-const MOBILE_SCALE = 0.64;
 const REDUCED_HOLD = 0.7;
 
 type Props = {
@@ -24,7 +22,6 @@ export function Intro({ target, onHandoff, onSwap, onDone }: Props) {
   const { copy } = useLanguage();
   const reduced = useReducedMotion();
   const [stage, setStage] = useState<IntroStage>("play");
-  const [timeScale] = useState(() => (window.matchMedia("(max-width: 767px)").matches ? MOBILE_SCALE : 1));
   const rootRef = useRef<HTMLDivElement>(null);
   const boxRef = useRef<HTMLDivElement>(null);
   const veilRef = useRef<HTMLDivElement>(null);
@@ -66,9 +63,8 @@ export function Intro({ target, onHandoff, onSwap, onDone }: Props) {
         return;
       }
 
-      const k = skipped ? 1 : timeScale;
-      const duration = (skipped ? SKIP_TRAVEL : TRAVEL) * k;
-      const delay = skipped ? 0 : TRAVEL_DELAY * k;
+      const duration = skipped ? SKIP_TRAVEL : TRAVEL;
+      const delay = skipped ? 0 : TRAVEL_DELAY;
       const x = to.left + to.width / 2 - (from.left + from.width / 2);
       const y = to.top + to.height / 2 - (from.top + from.height / 2);
       const scale = to.width / from.width;
@@ -78,11 +74,11 @@ export function Intro({ target, onHandoff, onSwap, onDone }: Props) {
       running.current.push(travel, reveal);
       Promise.all([travel, reveal]).then(swap);
     },
-    [onDone, onHandoff, onSwap, reduced, target, timeScale],
+    [onDone, onHandoff, onSwap, reduced, target],
   );
 
   useEffect(() => {
-    const hold = (reduced ? REDUCED_HOLD : HOLD_UNTIL * timeScale) * 1000;
+    const hold = (reduced ? REDUCED_HOLD : HOLD_UNTIL) * 1000;
     const timer = window.setTimeout(() => leave(false), hold);
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") leave(true);
@@ -92,7 +88,7 @@ export function Intro({ target, onHandoff, onSwap, onDone }: Props) {
       window.clearTimeout(timer);
       window.removeEventListener("keydown", onKey);
     };
-  }, [leave, reduced, timeScale]);
+  }, [leave, reduced]);
 
   useEffect(() => {
     const controls = running.current;
@@ -112,7 +108,7 @@ export function Intro({ target, onHandoff, onSwap, onDone }: Props) {
           className="intro-glow absolute inset-0"
           initial={{ opacity: 0, scale: 0.85 }}
           animate={stage === "play" ? { opacity: 1, scale: 1 } : { opacity: 0 }}
-          transition={{ duration: stage === "play" ? 0.6 * timeScale : 0.3, ease: EASE_OUT }}
+          transition={{ duration: stage === "play" ? 0.6 : 0.3, ease: EASE_OUT }}
         />
         <div aria-hidden className="intro-beam absolute inset-0" />
       </div>
@@ -122,22 +118,13 @@ export function Intro({ target, onHandoff, onSwap, onDone }: Props) {
           <ClyxAnimatedLogo
             mode="intro"
             stage={stage}
-            timeScale={timeScale}
+            timeScale={1}
             title={copy.brand}
             className="block h-full w-full"
           />
         </div>
       </div>
 
-      <m.button
-        type="button"
-        onClick={() => leave(true)}
-        className="focus-ring absolute bottom-6 min-h-11 border border-ivory/25 px-4 text-sm text-ivory/80 end-6 hover:border-ivory/60 hover:text-ivory"
-        animate={{ opacity: stage === "play" ? 1 : 0 }}
-        transition={{ duration: 0.2 }}
-      >
-        {copy.skip}
-      </m.button>
     </div>
   );
 }

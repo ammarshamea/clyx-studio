@@ -7,7 +7,6 @@ export const en: Dictionary = {
       "CLYX STUDIO is an artistic and audiovisual production studio for film and commercials, events and live production, post-production, and AI-powered production.",
   },
   brand: "CLYX STUDIO",
-  skip: "Skip intro",
   menu: "Menu",
   close: "Close",
   navLabel: "Main",

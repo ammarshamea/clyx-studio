@@ -121,12 +121,29 @@ export function SiteHeader() {
             <button
               ref={toggleRef}
               type="button"
-              className="min-h-11 px-2 text-sm text-ivory lg:hidden"
+              className="flex h-11 w-11 items-center justify-center text-ivory lg:hidden"
               aria-expanded={open}
               aria-controls="mobile-menu"
+              aria-label={open ? copy.close : copy.menu}
               onClick={() => setOpen((value) => !value)}
             >
-              {open ? copy.close : copy.menu}
+              <span aria-hidden className="relative block h-3.5 w-5">
+                <span
+                  className={`absolute inset-x-0 top-0 h-px bg-current transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${
+                    open ? "translate-y-[7px] rotate-45" : ""
+                  }`}
+                />
+                <span
+                  className={`absolute inset-x-0 top-[7px] h-px bg-current transition-opacity duration-200 motion-reduce:transition-none ${
+                    open ? "opacity-0" : ""
+                  }`}
+                />
+                <span
+                  className={`absolute inset-x-0 bottom-0 h-px bg-current transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] motion-reduce:transition-none ${
+                    open ? "-translate-y-[7px] -rotate-45" : ""
+                  }`}
+                />
+              </span>
             </button>
           </div>
         </div>

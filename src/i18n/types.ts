@@ -6,7 +6,6 @@ export type SectionId = "about" | "services" | "work" | "process" | "contact";
 export type Dictionary = {
   meta: { title: string; description: string };
   brand: string;
-  skip: string;
   menu: string;
   close: string;
   navLabel: string;
