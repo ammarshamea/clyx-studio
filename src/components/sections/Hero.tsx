@@ -86,7 +86,7 @@ export function Hero({ markRef, live, markVisible }: Props) {
         <div className="shell hero-split" dir="ltr">
           {text}
           <div ref={markRef} className="hero-mark" style={{ opacity: markVisible ? 1 : 0 }}>
-            <ClyxAnimatedLogo mode="hero" live={live} section={sectionRef} className="block h-full w-full" />
+            <ClyxAnimatedLogo mode="hero" live={markVisible} section={sectionRef} className="block h-full w-full" />
           </div>
         </div>
       </div>

@@ -7,6 +7,7 @@ import { LogoGradients, LogoShapeElement, svgLabel, useLogoPrefix } from "./part
 
 const AMPLITUDE = 0.28;
 const AMPLITUDE_COMPACT = 0.22;
+const HOLD_AFTER_LAND = 0.45;
 
 type Pose = "together" | "apart";
 
@@ -75,17 +76,31 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
   const amp = compact ? AMPLITUDE_COMPACT : AMPLITUDE;
   const variants = fragmentVariants(amp);
   const [pose, setPose] = useState<Pose>("together");
+  const [hasOpened, setHasOpened] = useState(false);
 
   useEffect(() => {
     if (!active) {
       setPose("together");
+      setHasOpened(false);
       return;
     }
-    setPose("apart");
-    const id = window.setInterval(() => {
-      setPose((current) => (current === "together" ? "apart" : "together"));
-    }, HERO_CYCLE * 1000);
-    return () => window.clearInterval(id);
+
+    setPose("together");
+    setHasOpened(false);
+
+    let loop = 0;
+    const startForward = window.setTimeout(() => {
+      setPose("apart");
+      setHasOpened(true);
+      loop = window.setInterval(() => {
+        setPose((current) => (current === "together" ? "apart" : "together"));
+      }, HERO_CYCLE * 1000);
+    }, HOLD_AFTER_LAND * 1000);
+
+    return () => {
+      window.clearTimeout(startForward);
+      window.clearInterval(loop);
+    };
   }, [active]);
 
   return (
@@ -139,7 +154,7 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
             fill={`url(#${prefix}-sheen)`}
             initial={{ x: -700, opacity: 0 }}
             animate={
-              active && pose === "together"
+              active && pose === "together" && hasOpened
                 ? { x: 2900, opacity: 1, transition: { duration: 0.5, delay: 0.08, ease: EASE_IN_OUT } }
                 : { x: -700, opacity: 0, transition: { duration: 0.2 } }
             }
