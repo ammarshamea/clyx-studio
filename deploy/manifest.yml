@@ -1,0 +1,11 @@
+name: Clyx Studio
+kind: vite
+health: /
+slug: clyx-studio
+workflow: added
+secrets:
+  - DEPLOY_HOST
+  - DEPLOY_USER
+  - DEPLOY_SSH_KEY
+  - DEPLOY_PATH
+  - APP_URL

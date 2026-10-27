@@ -1,0 +1,356 @@
+@import "tailwindcss";
+
+/* Same split as the hero art: portrait art at 4/5 and taller, landscape art otherwise. */
+@custom-variant wide (@media not (max-aspect-ratio: 4/5));
+
+@theme {
+  --color-magenta: #8d2168;
+  --color-magenta-light: #c0559b;
+  --color-charcoal: #1e2126;
+  --color-night: #0b0b10;
+  --color-surface: #151318;
+  --color-surface-2: #232027;
+  --color-ivory: #f5f2f5;
+  --color-muted: #aaa5ad;
+  --font-latin: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-arabic: "IBM Plex Sans Arabic", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --ease-out-cine: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out-cine: cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+html {
+  scrollbar-gutter: stable;
+  background: var(--color-night);
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--color-night);
+  color: var(--color-ivory);
+  overflow-x: clip;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+html[lang="en"] body {
+  font-family: var(--font-latin);
+}
+
+html[lang="ar"] body {
+  font-family: var(--font-arabic);
+}
+
+html.intro-lock,
+html.intro-lock body,
+html.menu-lock,
+html.menu-lock body {
+  overflow: hidden;
+}
+
+html.intro-lock {
+  overflow-anchor: none;
+  scroll-behavior: auto;
+}
+
+section[id] {
+  scroll-margin-top: 4.5rem;
+}
+
+::selection {
+  background: var(--color-magenta);
+  color: var(--color-ivory);
+}
+
+@layer components {
+  .shell {
+    width: min(100%, 80rem);
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 4.2vw, 2.5rem);
+  }
+
+  .section-y {
+    padding-block: clamp(5.5rem, 10vw, 9rem);
+  }
+
+  .display {
+    font-weight: 600;
+    line-height: 1.02;
+    text-wrap: balance;
+  }
+
+  html[lang="en"] .display {
+    letter-spacing: -0.035em;
+  }
+
+  html[lang="ar"] .display {
+    line-height: 1.2;
+  }
+
+  .eyebrow {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--color-muted);
+  }
+
+  html[lang="en"] .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+  }
+
+  .latin-mark {
+    font-family: var(--font-latin);
+    letter-spacing: 0.32em;
+  }
+
+  .media-frame {
+    display: block;
+    overflow: hidden;
+    width: 100%;
+    background: var(--color-surface);
+  }
+
+  .media-frame--portrait {
+    aspect-ratio: 4 / 5;
+    max-height: min(32rem, 62vh);
+  }
+
+  .media-frame--editorial {
+    aspect-ratio: 16 / 10;
+    max-height: min(26rem, 52vh);
+  }
+
+  .media-frame--banner {
+    aspect-ratio: 2.2 / 1;
+    max-height: min(24rem, 46vh);
+  }
+
+  .cta {
+    display: inline-flex;
+    min-height: 3.25rem;
+    align-items: center;
+    justify-content: center;
+    padding-inline: 1.6rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition:
+      background-color 280ms var(--ease-out-cine),
+      border-color 280ms var(--ease-out-cine),
+      color 280ms var(--ease-out-cine);
+  }
+
+  html[lang="en"] .cta {
+    font-size: 0.72rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+}
+
+.focus-ring:focus-visible,
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--color-magenta-light);
+  outline-offset: 3px;
+}
+
+.brand-gradient {
+  background: linear-gradient(120deg, #8d2168 0%, #1e2126 100%);
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Intro */
+.intro-glow {
+  background: radial-gradient(42% 38% at 50% 46%, rgba(141, 33, 104, 0.55) 0%, rgba(11, 11, 16, 0) 72%);
+}
+
+.intro-beam {
+  background: linear-gradient(105deg, transparent 38%, rgba(192, 85, 155, 0.08) 48%, transparent 58%);
+  animation: beam 3.2s var(--ease-in-out-cine) both;
+}
+
+@keyframes beam {
+  from {
+    transform: translateX(-30%);
+    opacity: 0;
+  }
+  35% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(30%);
+    opacity: 0.4;
+  }
+}
+
+/* Hero stage: covers the hero like object-fit: cover, so the live symbol stays locked to the painted emblem. */
+.hero {
+  --hero-h: max(100svh, 560px);
+  height: var(--hero-h);
+}
+
+.hero-copy {
+  position: relative;
+  isolation: isolate;
+  grid-area: copy;
+}
+
+.hero-copy::before {
+  content: "";
+  position: absolute;
+  inset: -18% -12% -28%;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(ellipse at 50% 58%, rgba(11, 11, 16, 0.78) 0%, rgba(11, 11, 16, 0.42) 48%, rgba(11, 11, 16, 0) 76%);
+}
+
+.hero-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas:
+    "copy"
+    "mark";
+  align-content: start;
+  align-items: center;
+  gap: 1.5rem;
+  height: 100%;
+  padding-block: 5.5rem 1.75rem;
+}
+
+.hero-mark {
+  grid-area: mark;
+  position: relative;
+  width: min(100%, 23rem);
+  aspect-ratio: 1;
+  justify-self: center;
+  overflow: hidden;
+}
+
+.hero-stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, calc(var(--hero-h) * 1.7768));
+  aspect-ratio: 1672 / 941;
+  transform: translate(-50%, -50%);
+}
+
+/* The art already contains a painted emblem. A blurred, darkened copy masked to that area turns it into
+   glow behind the live symbol, so moving fragments never reveal a second mark. */
+.hero-soften {
+  position: absolute;
+  inset: 0;
+  filter: blur(36px) brightness(0.32) saturate(1.1);
+  mask-image: radial-gradient(ellipse 52% 72% at 70% 48%, #000 64%, transparent 100%);
+}
+
+.hero-scrim {
+  background:
+    linear-gradient(180deg, rgba(11, 11, 16, 0.55) 0%, rgba(11, 11, 16, 0.28) 42%, rgba(11, 11, 16, 0.82) 100%),
+    radial-gradient(ellipse 48% 70% at 72% 48%, rgba(11, 11, 16, 0.55), transparent 72%);
+}
+
+@media (min-aspect-ratio: 4/5) {
+  .hero-split {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "copy mark";
+    align-content: center;
+    column-gap: clamp(1.5rem, 4vw, 4rem);
+    padding-block: 6.5rem 3.5rem;
+  }
+
+  html[lang="ar"] .hero-split {
+    grid-template-areas: "mark copy";
+  }
+
+  .hero-copy {
+    justify-self: start;
+    max-width: 44rem;
+  }
+
+  html[lang="ar"] .hero-copy {
+    justify-self: end;
+  }
+
+  .hero-mark {
+    width: min(100%, 34rem);
+    justify-self: center;
+  }
+}
+
+@media (max-aspect-ratio: 4/5) {
+  .hero-stage {
+    width: max(100%, calc(var(--hero-h) * 0.5628));
+    aspect-ratio: 941 / 1672;
+  }
+
+  .hero-soften {
+    mask-image: radial-gradient(ellipse 78% 42% at 50% 68%, #000 64%, transparent 100%);
+  }
+
+  .hero-scrim {
+    background: linear-gradient(180deg, rgba(11, 11, 16, 0.88) 0%, rgba(11, 11, 16, 0.5) 28%, rgba(11, 11, 16, 0.2) 48%, rgba(11, 11, 16, 0.78) 100%);
+  }
+}
+
+.scroll-cue {
+  animation: cue 2.4s var(--ease-in-out-cine) infinite;
+  transform-origin: top;
+}
+
+@keyframes cue {
+  0% {
+    transform: scaleY(0);
+    opacity: 1;
+  }
+  60% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1);
+    opacity: 0;
+  }
+}
+
+/* Angular divider taken from the arm geometry of the symbol. */
+.fragment-rule {
+  --rule-origin: left;
+  height: 10px;
+  background: linear-gradient(90deg, #8d2168, rgba(30, 33, 38, 0));
+  clip-path: polygon(0 40%, 100% 40%, 100% 60%, 12px 60%, 0 100%);
+}
+
+[dir="rtl"] .fragment-rule {
+  --rule-origin: right;
+  background: linear-gradient(270deg, #8d2168, rgba(30, 33, 38, 0));
+  clip-path: polygon(100% 40%, 0 40%, 0 60%, calc(100% - 12px) 60%, 100% 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-beam,
+  .scroll-cue {
+    animation: none;
+  }
+
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}

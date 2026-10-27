@@ -1,0 +1,143 @@
+import { animate, m, useReducedMotion, type AnimationPlaybackControls } from "framer-motion";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
+import { useLanguage } from "../i18n/LanguageProvider";
+import { EASE_IN_OUT, EASE_OUT } from "../motion/tokens";
+import { ClyxAnimatedLogo } from "./logo/ClyxAnimatedLogo";
+import type { IntroStage } from "./logo/IntroLogo";
+
+/** Seconds on the desktop timeline. Narrow screens scale every value by MOBILE_SCALE. */
+const HOLD_UNTIL = 2.12;
+const TRAVEL_DELAY = 0.12;
+const TRAVEL = 0.56;
+const SKIP_TRAVEL = 0.45;
+const MOBILE_SCALE = 0.64;
+const REDUCED_HOLD = 0.7;
+
+type Props = {
+  target: RefObject<HTMLElement | null>;
+  onHandoff: () => void;
+  onSwap: () => void;
+  onDone: (skipped: boolean) => void;
+};
+
+export function Intro({ target, onHandoff, onSwap, onDone }: Props) {
+  const { copy } = useLanguage();
+  const reduced = useReducedMotion();
+  const [stage, setStage] = useState<IntroStage>("play");
+  const [timeScale] = useState(() => (window.matchMedia("(max-width: 767px)").matches ? MOBILE_SCALE : 1));
+  const rootRef = useRef<HTMLDivElement>(null);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const veilRef = useRef<HTMLDivElement>(null);
+  const leaving = useRef(false);
+  const running = useRef<AnimationPlaybackControls[]>([]);
+
+  const leave = useCallback(
+    (skipped: boolean) => {
+      if (leaving.current) return;
+      leaving.current = true;
+      setStage("leave");
+      const scrolling = document.documentElement;
+      const previous = scrolling.style.scrollBehavior;
+      scrolling.style.scrollBehavior = "auto";
+      window.scrollTo(0, 0);
+      scrolling.style.scrollBehavior = previous;
+      onHandoff();
+
+      const root = rootRef.current;
+      const box = boxRef.current;
+      const veil = veilRef.current;
+      const to = target.current?.getBoundingClientRect();
+      const from = box?.getBoundingClientRect();
+      const finish = () => onDone(skipped);
+      const swap = () => {
+        onSwap();
+        if (box) box.style.opacity = "0";
+        window.requestAnimationFrame(finish);
+      };
+
+      if (reduced || !root || !box || !veil || !to || !from || to.width === 0 || from.width === 0) {
+        const fade = root ? animate(root, { opacity: 0 }, { duration: 0.3, ease: "linear" }) : null;
+        if (fade) {
+          running.current.push(fade);
+          fade.then(swap);
+        } else {
+          swap();
+        }
+        return;
+      }
+
+      const k = skipped ? 1 : timeScale;
+      const duration = (skipped ? SKIP_TRAVEL : TRAVEL) * k;
+      const delay = skipped ? 0 : TRAVEL_DELAY * k;
+      const x = to.left + to.width / 2 - (from.left + from.width / 2);
+      const y = to.top + to.height / 2 - (from.top + from.height / 2);
+      const scale = to.width / from.width;
+
+      const travel = animate(box, { x, y, scale }, { duration, delay, ease: EASE_IN_OUT });
+      const reveal = animate(veil, { opacity: 0 }, { duration: duration + delay, ease: EASE_OUT });
+      running.current.push(travel, reveal);
+      Promise.all([travel, reveal]).then(swap);
+    },
+    [onDone, onHandoff, onSwap, reduced, target, timeScale],
+  );
+
+  useEffect(() => {
+    const hold = (reduced ? REDUCED_HOLD : HOLD_UNTIL * timeScale) * 1000;
+    const timer = window.setTimeout(() => leave(false), hold);
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") leave(true);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [leave, reduced, timeScale]);
+
+  useEffect(() => {
+    const controls = running.current;
+    return () => controls.forEach((control) => control.stop());
+  }, []);
+
+  return (
+    <div
+      ref={rootRef}
+      className="fixed inset-0 z-[60] overflow-hidden"
+      aria-label={copy.brand}
+      role="presentation"
+    >
+      <div ref={veilRef} className="absolute inset-0 bg-night">
+        <m.div
+          aria-hidden
+          className="intro-glow absolute inset-0"
+          initial={{ opacity: 0, scale: 0.85 }}
+          animate={stage === "play" ? { opacity: 1, scale: 1 } : { opacity: 0 }}
+          transition={{ duration: stage === "play" ? 0.6 * timeScale : 0.3, ease: EASE_OUT }}
+        />
+        <div aria-hidden className="intro-beam absolute inset-0" />
+      </div>
+
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div ref={boxRef} className="aspect-square w-[min(78vw,64vh,560px)]">
+          <ClyxAnimatedLogo
+            mode="intro"
+            stage={stage}
+            timeScale={timeScale}
+            title={copy.brand}
+            className="block h-full w-full"
+          />
+        </div>
+      </div>
+
+      <m.button
+        type="button"
+        onClick={() => leave(true)}
+        className="focus-ring absolute bottom-6 min-h-11 border border-ivory/25 px-4 text-sm text-ivory/80 end-6 hover:border-ivory/60 hover:text-ivory"
+        animate={{ opacity: stage === "play" ? 1 : 0 }}
+        transition={{ duration: 0.2 }}
+      >
+        {copy.skip}
+      </m.button>
+    </div>
+  );
+}
