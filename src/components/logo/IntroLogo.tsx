@@ -71,7 +71,7 @@ const letterVariants: Variants = {
     opacity: 1,
     transition: { delay: rise.delay, duration: rise.duration, ease: EASE_OUT },
   }),
-  leave: { opacity: 0, transition: { duration: 0.22, ease: "linear" } },
+  leave: { opacity: 0, transition: { duration: 0.55, ease: EASE_OUT } },
 };
 
 export type IntroLogoProps = {
@@ -166,7 +166,7 @@ export function IntroLogo({ stage, timeScale, title, className }: IntroLogoProps
             animate={
               stage === "play"
                 ? { x: 2900, transition: { delay: SHEEN_START * k, duration: 0.65 * k, ease: EASE_IN_OUT } }
-                : { opacity: 0, transition: { duration: 0.15 } }
+                : { opacity: 0, transition: { duration: 0.4, ease: EASE_OUT } }
             }
           />
         </g>

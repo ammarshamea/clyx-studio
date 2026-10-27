@@ -101,7 +101,7 @@ function Site() {
 
   return (
     <>
-      <Landing heroMarkRef={heroMarkRef} live={!active} markVisible={swapped} inert={active} />
+      <Landing heroMarkRef={heroMarkRef} live={state !== "initial" && state !== "playing"} markVisible={swapped} inert={active} />
       {state === "playing" || state === "handoff" ? (
         <Intro target={heroMarkRef} onHandoff={onHandoff} onSwap={onSwap} onDone={onDone} />
       ) : null}

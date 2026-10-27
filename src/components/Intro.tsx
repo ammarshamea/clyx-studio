@@ -1,14 +1,14 @@
 import { animate, m, useReducedMotion, type AnimationPlaybackControls } from "framer-motion";
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { useLanguage } from "../i18n/LanguageProvider";
-import { EASE_IN_OUT, EASE_OUT } from "../motion/tokens";
+import { EASE_SOFT } from "../motion/tokens";
 import { ClyxAnimatedLogo } from "./logo/ClyxAnimatedLogo";
 import type { IntroStage } from "./logo/IntroLogo";
 
 const HOLD_UNTIL = 2.12;
-const TRAVEL_DELAY = 0.12;
-const TRAVEL = 0.56;
-const SKIP_TRAVEL = 0.45;
+const TRAVEL_DELAY = 0.28;
+const TRAVEL = 1.2;
+const SKIP_TRAVEL = 0.75;
 const REDUCED_HOLD = 0.7;
 
 type Props = {
@@ -69,8 +69,8 @@ export function Intro({ target, onHandoff, onSwap, onDone }: Props) {
       const y = to.top + to.height / 2 - (from.top + from.height / 2);
       const scale = to.width / from.width;
 
-      const travel = animate(box, { x, y, scale }, { duration, delay, ease: EASE_IN_OUT });
-      const reveal = animate(veil, { opacity: 0 }, { duration: duration + delay, ease: EASE_OUT });
+      const travel = animate(box, { x, y, scale }, { duration, delay, ease: EASE_SOFT });
+      const reveal = animate(veil, { opacity: 0 }, { duration: duration + delay + 0.25, delay, ease: EASE_SOFT });
       running.current.push(travel, reveal);
       Promise.all([travel, reveal]).then(swap);
     },
@@ -108,7 +108,7 @@ export function Intro({ target, onHandoff, onSwap, onDone }: Props) {
           className="intro-glow absolute inset-0"
           initial={{ opacity: 0, scale: 0.85 }}
           animate={stage === "play" ? { opacity: 1, scale: 1 } : { opacity: 0 }}
-          transition={{ duration: stage === "play" ? 0.6 : 0.3, ease: EASE_OUT }}
+          transition={{ duration: stage === "play" ? 0.6 : 0.85, ease: EASE_SOFT }}
         />
         <div aria-hidden className="intro-beam absolute inset-0" />
       </div>
