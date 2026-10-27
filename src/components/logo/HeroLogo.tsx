@@ -3,17 +3,19 @@ import { useEffect, useState, type RefObject } from "react";
 import { LOGO_SYMBOL, LOGO_VIEWBOX, type LogoShape } from "../../brand/logo";
 import { LogoGradients, LogoShapeElement, svgLabel, useLogoPrefix } from "./parts";
 
-/** Each right arm pivots on its inner vertex; left symbol shapes stay fixed. */
+/**
+ * Right-side clapper: `arm-top` / `arm-bottom` are the long diagonal bars (flat vertical
+ * outer edges). Hub wedges + `ring` stay static. Each bar pivots on its inner corner.
+ */
 const TOP_HINGE = { x: 889.92, y: 748.7 };
 const BOTTOM_HINGE = { x: 889.92, y: 763.27 };
-const SPARK_AT = { x: 1480, y: 756 };
 
 const LOOP = 4;
 const LAND = 0.28;
 type Bezier = [number, number, number, number];
 const LINEAR: Bezier = [0, 0, 1, 1];
 const EASE_IN: Bezier = [0.55, 0, 1, 1];
-const EASE_CLOSE: Bezier = [0.78, 0, 0.98, 0.08];
+const EASE_CLOSE: Bezier = [0.82, 0, 0.98, 0.06];
 const EASE_HIT: Bezier = [0.16, 1, 0.3, 1];
 const SOFT: Bezier = [0.33, 1, 0.68, 1];
 
@@ -64,16 +66,8 @@ function loopOf(times: number[], ease: Bezier[]) {
 }
 
 function around(hinge: { x: number; y: number }) {
-  return ({
-    rotate = "0deg",
-    scaleY = "1",
-    x = 0,
-  }: {
-    rotate?: string | number;
-    scaleY?: string | number;
-    x?: string | number;
-  }) =>
-    `translate(${hinge.x}px, ${hinge.y}px) scale(1, ${scaleY}) rotate(${rotate}) translate(${-hinge.x}px, ${-hinge.y}px) translate(${x}px, 0)`;
+  return ({ rotate = "0deg", scaleY = "1" }: { rotate?: string | number; scaleY?: string | number }) =>
+    `translate(${hinge.x}px, ${hinge.y}px) scale(1, ${scaleY}) rotate(${rotate}) translate(${-hinge.x}px, ${-hinge.y}px)`;
 }
 
 export type HeroLogoProps = {
@@ -88,29 +82,25 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
   const { inView, tabVisible, compact } = useHeroState(section);
   const active = live && inView && tabVisible;
   const open = compact ? 30 : 34;
-  const bite = compact ? 2.5 : 3;
+  const bite = compact ? 2 : 2.5;
   const rest = { duration: 0.32, ease: SOFT };
 
   const top = shape("arm-top");
   const bottom = shape("arm-bottom");
 
-  const rotateTimes = [0, 0.1, 0.15, 0.32, 0.42, 0.5, 0.555, 0.7, 1];
-  const rotateEase = [LINEAR, EASE_IN, SOFT, LINEAR, EASE_CLOSE, EASE_HIT, SOFT, LINEAR];
-  const squashTimes = [0, 0.5, 0.52, 0.58, 1];
+  const rotateTimes = [0, 0.1, 0.15, 0.32, 0.42, 0.495, 0.52, 0.545, 0.7, 1];
+  const rotateEase = [LINEAR, EASE_IN, SOFT, LINEAR, EASE_CLOSE, EASE_HIT, SOFT, EASE_HIT, SOFT];
+  const squashTimes = [0, 0.495, 0.51, 0.56, 1];
   const squashEase = [LINEAR, EASE_HIT, SOFT, LINEAR];
-  const shakeTimes = [0, 0.5, 0.508, 0.518, 0.528, 1];
-  const shakeEase = [LINEAR, EASE_CLOSE, LINEAR, SOFT, LINEAR];
 
-  const topRotate = [0, 0, -3, -open, -open, bite, 0, -open * 0.28, 0];
-  const bottomRotate = [0, 0, 3, open, open, -bite, 0, open * 0.28, 0];
-  const impactSquash = [1, 1, 0.91, 1, 1];
-  const impactShake = [0, 0, -3, 2.5, 0];
+  const topRotate = [0, 0, -3, -open, -open, bite, -0.6, 0, -open * 0.28, 0];
+  const bottomRotate = [0, 0, 3, open, open, -bite, 0.6, 0, open * 0.28, 0];
+  const impactSquash = [1, 1, 0.94, 1, 1];
 
   const armTransition = active
     ? {
         rotate: loopOf(rotateTimes, rotateEase),
         scaleY: loopOf(squashTimes, squashEase),
-        x: loopOf(shakeTimes, shakeEase),
       }
     : rest;
 
@@ -124,11 +114,7 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
 
       <m.g
         initial={false}
-        animate={
-          active
-            ? { rotate: topRotate, scaleY: impactSquash, x: impactShake }
-            : { rotate: 0, scaleY: 1, x: 0 }
-        }
+        animate={active ? { rotate: topRotate, scaleY: impactSquash } : { rotate: 0, scaleY: 1 }}
         transition={armTransition}
         transformTemplate={around(TOP_HINGE)}
       >
@@ -139,11 +125,7 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
 
       <m.g
         initial={false}
-        animate={
-          active
-            ? { rotate: bottomRotate, scaleY: impactSquash, x: impactShake }
-            : { rotate: 0, scaleY: 1, x: 0 }
-        }
+        animate={active ? { rotate: bottomRotate, scaleY: impactSquash } : { rotate: 0, scaleY: 1 }}
         transition={armTransition}
         transformTemplate={around(BOTTOM_HINGE)}
       >
@@ -151,21 +133,6 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
       </m.g>
 
       <LogoShapeElement shape={shape("ring")} prefix={prefix} />
-
-      <m.g
-        pointerEvents="none"
-        initial={false}
-        animate={active ? { opacity: [0, 0, 1, 0, 0], scale: [0.45, 0.45, 1.08, 0.7, 0.45] } : { opacity: 0, scale: 0.45 }}
-        transition={active ? loopOf([0, 0.5, 0.515, 0.58, 1], [LINEAR, EASE_HIT, SOFT, LINEAR]) : rest}
-        transformTemplate={({ scale = 1 }) =>
-          `translate(${SPARK_AT.x}px, ${SPARK_AT.y}px) scale(${scale}) translate(${-SPARK_AT.x}px, ${-SPARK_AT.y}px)`
-        }
-        style={{ mixBlendMode: "plus-lighter" }}
-      >
-        <polygon points="1240,750 1760,756 1240,762" fill="#F5F2F5" />
-        <polygon points="1360,756 1680,734 1440,756" fill="#C43A8A" />
-        <polygon points="1360,756 1680,778 1440,756" fill="#C43A8A" />
-      </m.g>
     </svg>
   );
 }
