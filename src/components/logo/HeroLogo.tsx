@@ -1,12 +1,13 @@
 import { m } from "framer-motion";
 import { useEffect, useState, type RefObject } from "react";
-import { LOGO_SYMBOL, LOGO_VIEWBOX } from "../../brand/logo";
+import { LOGO_SYMBOL, LOGO_VIEWBOX, type LogoShape } from "../../brand/logo";
 import { EASE_SOFT } from "../../motion/tokens";
 import { LogoGradients, LogoShapeElement, svgLabel, useLogoPrefix } from "./parts";
 
-/** Junction of the two right-hand wedges. */
-const HINGE = { x: 889.92, y: 756 };
-const STICK = new Set(["arm-top", "wedge-upper"]);
+/** Each large right arm pivots on its own inner vertex. */
+const TOP_HINGE = { x: 889.92, y: 748.7 };
+const BOTTOM_HINGE = { x: 889.92, y: 763.27 };
+const SPARK_AT = { x: 1480, y: 756 };
 
 const LOOP = 4;
 const LAND = 0.28;
@@ -14,6 +15,12 @@ const LINEAR = [0, 0, 1, 1] as const;
 const EASE_IN = [0.55, 0, 1, 1] as const;
 const EASE_CLOSE = [0.72, 0, 0.98, 0.12] as const;
 const EASE_HIT = [0.16, 1, 0.3, 1] as const;
+
+function shape(id: string): LogoShape {
+  const found = LOGO_SYMBOL.find((item) => item.id === id);
+  if (!found) throw new Error(`Missing logo shape ${id}`);
+  return found;
+}
 
 function useHeroState(section: RefObject<HTMLElement | null>) {
   const [inView, setInView] = useState(true);
@@ -55,6 +62,11 @@ function loopOf(times: number[], ease: ReadonlyArray<readonly number[]>) {
   };
 }
 
+function around(hinge: { x: number; y: number }) {
+  return ({ rotate = "0deg", scaleY = "1" }: { rotate?: string | number; scaleY?: string | number }) =>
+    `translate(${hinge.x}px, ${hinge.y}px) scale(1, ${scaleY}) rotate(${rotate}) translate(${-hinge.x}px, ${-hinge.y}px)`;
+}
+
 export type HeroLogoProps = {
   live: boolean;
   section: RefObject<HTMLElement | null>;
@@ -66,109 +78,69 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
   const prefix = useLogoPrefix();
   const { inView, tabVisible, compact } = useHeroState(section);
   const active = live && inView && tabVisible;
-  const open = compact ? -26 : -30;
+  const spread = compact ? 12 : 16;
+  const clap = compact ? 22 : 24;
   const rest = { duration: 0.32, ease: EASE_SOFT };
 
-  const slate = LOGO_SYMBOL.filter((shape) => !STICK.has(shape.id));
-  const stick = LOGO_SYMBOL.filter((shape) => STICK.has(shape.id));
+  const top = shape("arm-top");
+  const bottom = shape("arm-bottom");
+  const rotateTimes = [0, 0.16, 0.24, 0.4, 0.5, 0.575, 0.61, 0.76, 1];
+  const rotateEase = [LINEAR, EASE_IN, EASE_SOFT, LINEAR, EASE_CLOSE, LINEAR, EASE_SOFT, LINEAR];
+  const squashTimes = [0, 0.575, 0.605, 0.68, 1];
+  const squashEase = [LINEAR, EASE_HIT, EASE_SOFT, LINEAR];
 
   return (
     <svg viewBox={LOGO_VIEWBOX} className={className} direction="ltr" overflow="visible" {...svgLabel(title)}>
       <defs>
         <LogoGradients prefix={prefix} shapes={LOGO_SYMBOL} />
-        <clipPath id={`${prefix}-symbol`}>
-          {LOGO_SYMBOL.map((shape) => (
-            <LogoShapeElement key={shape.id} shape={shape} />
-          ))}
-        </clipPath>
-        <linearGradient id={`${prefix}-sheen`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#F5F2F5" stopOpacity="0" />
-          <stop offset="0.5" stopColor="#F5F2F5" stopOpacity="0.55" />
-          <stop offset="1" stopColor="#F5F2F5" stopOpacity="0" />
-        </linearGradient>
       </defs>
+
+      <LogoShapeElement shape={shape("wedge-lower")} prefix={prefix} />
 
       <m.g
         initial={false}
-        animate={
-          active
-            ? { x: [0, 0, 9, -6, 3, 0, 0], y: [0, 0, 4, -3, 1, 0, 0] }
-            : { x: 0, y: 0 }
-        }
+        animate={active ? { rotate: [0, 0, -4, -spread, -spread, clap, clap, 0, 0], scaleY: [1, 1, 0.94, 1, 1] } : { rotate: 0, scaleY: 1 }}
         transition={
           active
-            ? loopOf([0, 0.445, 0.455, 0.47, 0.488, 0.52, 1], [LINEAR, EASE_HIT, EASE_HIT, EASE_HIT, EASE_HIT, LINEAR])
+            ? { rotate: loopOf(rotateTimes, rotateEase), scaleY: loopOf(squashTimes, squashEase) }
             : rest
         }
+        transformTemplate={around(TOP_HINGE)}
       >
-        {slate.map((shape) => (
-          <LogoShapeElement key={shape.id} shape={shape} prefix={prefix} />
-        ))}
-
-        <m.g
-          initial={false}
-          animate={
-            active
-              ? { rotate: [0, 4, open, open, 0, 0], scale: [1, 1, 1, 0.965, 1, 1] }
-              : { rotate: 0, scale: 1 }
-          }
-          transition={
-            active
-              ? {
-                  rotate: loopOf([0, 0.03, 0.26, 0.388, 0.445, 1], [EASE_IN, EASE_SOFT, LINEAR, EASE_CLOSE, LINEAR]),
-                  scale: loopOf([0, 0.445, 0.452, 0.48, 0.52, 1], [LINEAR, EASE_HIT, EASE_HIT, LINEAR, LINEAR]),
-                }
-              : rest
-          }
-          transformTemplate={({ rotate, scale }) =>
-            `translate(${HINGE.x}px, ${HINGE.y}px) rotate(${rotate}) scale(${scale}) translate(${-HINGE.x}px, ${-HINGE.y}px)`
-          }
-        >
-          {stick.map((shape) => (
-            <LogoShapeElement key={shape.id} shape={shape} prefix={prefix} />
-          ))}
-        </m.g>
-
-        <m.g
-          pointerEvents="none"
-          initial={false}
-          animate={
-            active
-              ? { opacity: [0, 0, 1, 0.55, 0, 0], scale: [0.35, 0.35, 1.12, 0.82, 0.4, 0.35] }
-              : { opacity: 0, scale: 0.35 }
-          }
-          transition={
-            active
-              ? loopOf([0, 0.442, 0.45, 0.475, 0.53, 1], [LINEAR, EASE_HIT, EASE_HIT, EASE_SOFT, LINEAR])
-              : rest
-          }
-          transformTemplate={({ scale }) =>
-            `translate(${HINGE.x}px, ${HINGE.y}px) scale(${scale}) translate(${-HINGE.x}px, ${-HINGE.y}px)`
-          }
-          style={{ mixBlendMode: "plus-lighter" }}
-        >
-          <polygon points="889.92,738 1118,756 889.92,774" fill="#F5F2F5" />
-          <polygon points="889.92,748 1048,728 904,756" fill="#8D2168" />
-          <polygon points="889.92,764 1048,784 904,756" fill="#8D2168" />
-          <circle cx={HINGE.x} cy={HINGE.y} r="20" fill="#F5F2F5" />
-        </m.g>
+        <LogoShapeElement shape={top} prefix={prefix} />
       </m.g>
 
-      <g clipPath={`url(#${prefix}-symbol)`} pointerEvents="none">
-        <g transform="skewX(-18)">
-          <m.rect
-            y="-200"
-            width="380"
-            height="2400"
-            fill={`url(#${prefix}-sheen)`}
-            initial={false}
-            animate={active ? { x: [-800, -800, -800, 2900, 2900], opacity: [0, 0, 1, 0.35, 0] } : { x: -800, opacity: 0 }}
-            transition={
-              active ? loopOf([0, 0.442, 0.445, 0.53, 1], [LINEAR, LINEAR, EASE_SOFT, LINEAR]) : rest
-            }
-          />
-        </g>
-      </g>
+      <LogoShapeElement shape={shape("wedge-upper")} prefix={prefix} />
+
+      <m.g
+        initial={false}
+        animate={active ? { rotate: [0, 0, 4, spread, spread, -clap, -clap, 0, 0], scaleY: [1, 1, 0.94, 1, 1] } : { rotate: 0, scaleY: 1 }}
+        transition={
+          active
+            ? { rotate: loopOf(rotateTimes, rotateEase), scaleY: loopOf(squashTimes, squashEase) }
+            : rest
+        }
+        transformTemplate={around(BOTTOM_HINGE)}
+      >
+        <LogoShapeElement shape={bottom} prefix={prefix} />
+      </m.g>
+
+      <LogoShapeElement shape={shape("ring")} prefix={prefix} />
+
+      <m.g
+        pointerEvents="none"
+        initial={false}
+        animate={active ? { opacity: [0, 0, 1, 0, 0], scale: [0.45, 0.45, 1.08, 0.7, 0.45] } : { opacity: 0, scale: 0.45 }}
+        transition={active ? loopOf([0, 0.57, 0.59, 0.68, 1], [LINEAR, EASE_HIT, EASE_SOFT, LINEAR]) : rest}
+        transformTemplate={({ scale = 1 }) =>
+          `translate(${SPARK_AT.x}px, ${SPARK_AT.y}px) scale(${scale}) translate(${-SPARK_AT.x}px, ${-SPARK_AT.y}px)`
+        }
+        style={{ mixBlendMode: "plus-lighter" }}
+      >
+        <polygon points="1240,750 1760,756 1240,762" fill="#F5F2F5" />
+        <polygon points="1360,756 1680,734 1440,756" fill="#C43A8A" />
+        <polygon points="1360,756 1680,778 1440,756" fill="#C43A8A" />
+      </m.g>
     </svg>
   );
 }
