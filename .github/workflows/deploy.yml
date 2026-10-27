@@ -42,5 +42,9 @@ jobs:
             dist/ "$DEPLOY_USER@$DEPLOY_HOST:$DEPLOY_PATH/"
 
       - name: Health
-        if: ${{ secrets.APP_URL != '' }}
-        run: curl -fsS "${{ secrets.APP_URL }}/" >/dev/null
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+        run: |
+          if [ -n "$APP_URL" ]; then
+            curl -fsS "$APP_URL/" >/dev/null
+          fi

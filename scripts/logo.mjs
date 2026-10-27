@@ -157,7 +157,7 @@ ${shapes}
 `;
 }
 
-const svg = readFileSync(SOURCE, "utf8");
+const svg = readFileSync(SOURCE, "utf8").replace(/\r\n/g, "\n");
 const shapes = parse(svg);
 const errors = validate(svg, shapes);
 if (errors.length) {
