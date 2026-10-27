@@ -4,8 +4,8 @@ import { LOGO_SYMBOL, LOGO_VIEWBOX, type LogoShape } from "../../brand/logo";
 import { LogoGradients, LogoShapeElement, svgLabel, useLogoPrefix } from "./parts";
 
 /**
- * Right-side clapper: `arm-top` / `arm-bottom` are the long diagonal bars (flat vertical
- * outer edges). Hub wedges + `ring` stay static. Each bar pivots on its inner corner.
+ * Long right bars: `arm-top` / `arm-bottom`. Each pivots on its inner-left tip;
+ * those hinge points stay fixed in SVG space (translate–rotate–untranslate only).
  */
 const TOP_HINGE = { x: 889.92, y: 748.7 };
 const BOTTOM_HINGE = { x: 889.92, y: 763.27 };
@@ -14,9 +14,8 @@ const LOOP = 4;
 const LAND = 0.28;
 type Bezier = [number, number, number, number];
 const LINEAR: Bezier = [0, 0, 1, 1];
-const EASE_IN: Bezier = [0.55, 0, 1, 1];
-const EASE_CLOSE: Bezier = [0.82, 0, 0.98, 0.06];
-const EASE_HIT: Bezier = [0.16, 1, 0.3, 1];
+const EASE_OUT: Bezier = [0.16, 1, 0.3, 1];
+const EASE_SNAP: Bezier = [0.82, 0, 0.98, 0.05];
 const SOFT: Bezier = [0.33, 1, 0.68, 1];
 
 function shape(id: string): LogoShape {
@@ -65,9 +64,10 @@ function loopOf(times: number[], ease: Bezier[]) {
   };
 }
 
-function around(hinge: { x: number; y: number }) {
-  return ({ rotate = "0deg", scaleY = "1" }: { rotate?: string | number; scaleY?: string | number }) =>
-    `translate(${hinge.x}px, ${hinge.y}px) scale(1, ${scaleY}) rotate(${rotate}) translate(${-hinge.x}px, ${-hinge.y}px)`;
+/** Rotation only; pivot fixed at hinge in userSpaceOnUse coordinates. */
+function pivotAt(hinge: { x: number; y: number }) {
+  return ({ rotate = "0deg" }: { rotate?: string | number }) =>
+    `translate(${hinge.x}px, ${hinge.y}px) rotate(${rotate}) translate(${-hinge.x}px, ${-hinge.y}px)`;
 }
 
 export type HeroLogoProps = {
@@ -81,28 +81,21 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
   const prefix = useLogoPrefix();
   const { inView, tabVisible, compact } = useHeroState(section);
   const active = live && inView && tabVisible;
-  const open = compact ? 30 : 34;
-  const bite = compact ? 2 : 2.5;
+  /** Degrees to swing inward from resting artwork until the bars meet. */
+  const close = compact ? 11.5 : 13.2;
   const rest = { duration: 0.32, ease: SOFT };
 
   const top = shape("arm-top");
   const bottom = shape("arm-bottom");
 
-  const rotateTimes = [0, 0.1, 0.15, 0.32, 0.42, 0.495, 0.52, 0.545, 0.7, 1];
-  const rotateEase = [LINEAR, EASE_IN, SOFT, LINEAR, EASE_CLOSE, EASE_HIT, SOFT, EASE_HIT, SOFT];
-  const squashTimes = [0, 0.495, 0.51, 0.56, 1];
-  const squashEase = [LINEAR, EASE_HIT, SOFT, LINEAR];
+  // Rest (0°) → smooth close → fast snap shut → hold → smooth reopen → rest
+  const rotateTimes = [0, 0.12, 0.38, 0.46, 0.56, 1];
+  const rotateEase = [LINEAR, EASE_OUT, EASE_SNAP, LINEAR, EASE_OUT];
 
-  const topRotate = [0, 0, -3, -open, -open, bite, -0.6, 0, -open * 0.28, 0];
-  const bottomRotate = [0, 0, 3, open, open, -bite, 0.6, 0, open * 0.28, 0];
-  const impactSquash = [1, 1, 0.94, 1, 1];
+  const topRotate = [0, 0, close * 0.82, close, close, 0];
+  const bottomRotate = [0, 0, -close * 0.82, -close, -close, 0];
 
-  const armTransition = active
-    ? {
-        rotate: loopOf(rotateTimes, rotateEase),
-        scaleY: loopOf(squashTimes, squashEase),
-      }
-    : rest;
+  const rotateTransition = active ? loopOf(rotateTimes, rotateEase) : rest;
 
   return (
     <svg viewBox={LOGO_VIEWBOX} className={className} direction="ltr" overflow="visible" {...svgLabel(title)}>
@@ -114,9 +107,9 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
 
       <m.g
         initial={false}
-        animate={active ? { rotate: topRotate, scaleY: impactSquash } : { rotate: 0, scaleY: 1 }}
-        transition={armTransition}
-        transformTemplate={around(TOP_HINGE)}
+        animate={active ? { rotate: topRotate } : { rotate: 0 }}
+        transition={{ rotate: rotateTransition }}
+        transformTemplate={pivotAt(TOP_HINGE)}
       >
         <LogoShapeElement shape={top} prefix={prefix} />
       </m.g>
@@ -125,9 +118,9 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
 
       <m.g
         initial={false}
-        animate={active ? { rotate: bottomRotate, scaleY: impactSquash } : { rotate: 0, scaleY: 1 }}
-        transition={armTransition}
-        transformTemplate={around(BOTTOM_HINGE)}
+        animate={active ? { rotate: bottomRotate } : { rotate: 0 }}
+        transition={{ rotate: rotateTransition }}
+        transformTemplate={pivotAt(BOTTOM_HINGE)}
       >
         <LogoShapeElement shape={bottom} prefix={prefix} />
       </m.g>
