@@ -15,5 +15,5 @@ export const STAGGER = {
 
 export const INTRO_SECONDS = 2.8;
 
-export const HERO_CYCLE = 3;
+export const HERO_CYCLE = 4;
 export const HERO_TRAVEL = 1.7;

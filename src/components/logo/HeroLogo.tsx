@@ -1,21 +1,19 @@
 import { m } from "framer-motion";
 import { useEffect, useState, type RefObject } from "react";
 import { LOGO_SYMBOL, LOGO_VIEWBOX } from "../../brand/logo";
-import { EASE_IN_OUT, EASE_SOFT } from "../../motion/tokens";
+import { EASE_SOFT } from "../../motion/tokens";
 import { LogoGradients, LogoShapeElement, svgLabel, useLogoPrefix } from "./parts";
 
-/** Junction of the two arms — the clapper hinge. */
+/** Junction of the two right-hand wedges. */
 const HINGE = { x: 889.92, y: 756 };
 const STICK = new Set(["arm-top", "wedge-upper"]);
 
-const HOLD_AFTER_LAND = 0.5;
-const OPEN_FOR = 0.78;
-const HOLD_OPEN = 0.42;
-const SNAP_FOR = 0.18;
-const HOLD_SHUT = 1.9;
-const EASE_SNAP = [0.62, 0, 0.98, 0.18] as const;
-
-type Pose = "shut" | "open";
+const LOOP = 4;
+const LAND = 0.28;
+const LINEAR = [0, 0, 1, 1] as const;
+const EASE_IN = [0.55, 0, 1, 1] as const;
+const EASE_CLOSE = [0.72, 0, 0.98, 0.12] as const;
+const EASE_HIT = [0.16, 1, 0.3, 1] as const;
 
 function useHeroState(section: RefObject<HTMLElement | null>) {
   const [inView, setInView] = useState(true);
@@ -47,6 +45,16 @@ function useHeroState(section: RefObject<HTMLElement | null>) {
   return { inView, tabVisible, compact };
 }
 
+function loopOf(times: number[], ease: ReadonlyArray<readonly number[]>) {
+  return {
+    duration: LOOP,
+    times,
+    ease,
+    repeat: Infinity,
+    delay: LAND,
+  };
+}
+
 export type HeroLogoProps = {
   live: boolean;
   section: RefObject<HTMLElement | null>;
@@ -58,47 +66,8 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
   const prefix = useLogoPrefix();
   const { inView, tabVisible, compact } = useHeroState(section);
   const active = live && inView && tabVisible;
-  const openDeg = compact ? -14 : -18;
-  const [pose, setPose] = useState<Pose>("shut");
-  const [hasOpened, setHasOpened] = useState(false);
-
-  useEffect(() => {
-    if (!active) {
-      setPose("shut");
-      setHasOpened(false);
-      return;
-    }
-
-    setPose("shut");
-    setHasOpened(false);
-    const timers: number[] = [];
-    let cancelled = false;
-
-    const clap = () => {
-      if (cancelled) return;
-      setPose("open");
-      setHasOpened(true);
-      timers.push(
-        window.setTimeout(() => {
-          if (cancelled) return;
-          setPose("shut");
-          timers.push(window.setTimeout(clap, (SNAP_FOR + HOLD_SHUT) * 1000));
-        }, (OPEN_FOR + HOLD_OPEN) * 1000),
-      );
-    };
-
-    timers.push(window.setTimeout(clap, HOLD_AFTER_LAND * 1000));
-
-    return () => {
-      cancelled = true;
-      timers.forEach((id) => window.clearTimeout(id));
-    };
-  }, [active]);
-
-  const stickTransition =
-    pose === "open"
-      ? { duration: OPEN_FOR, ease: EASE_SOFT }
-      : { duration: SNAP_FOR, ease: EASE_SNAP };
+  const open = compact ? -26 : -30;
+  const rest = { duration: 0.32, ease: EASE_SOFT };
 
   const slate = LOGO_SYMBOL.filter((shape) => !STICK.has(shape.id));
   const stick = LOGO_SYMBOL.filter((shape) => STICK.has(shape.id));
@@ -114,26 +83,75 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
         </clipPath>
         <linearGradient id={`${prefix}-sheen`} x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stopColor="#F5F2F5" stopOpacity="0" />
-          <stop offset="0.5" stopColor="#F5F2F5" stopOpacity="0.5" />
+          <stop offset="0.5" stopColor="#F5F2F5" stopOpacity="0.55" />
           <stop offset="1" stopColor="#F5F2F5" stopOpacity="0" />
         </linearGradient>
       </defs>
 
-      {slate.map((shape) => (
-        <LogoShapeElement key={shape.id} shape={shape} prefix={prefix} />
-      ))}
-
       <m.g
         initial={false}
-        animate={{ rotate: active && pose === "open" ? openDeg : 0 }}
-        transition={stickTransition}
-        transformTemplate={({ rotate }) =>
-          `translate(${HINGE.x}px, ${HINGE.y}px) rotate(${rotate}) translate(${-HINGE.x}px, ${-HINGE.y}px)`
+        animate={
+          active
+            ? { x: [0, 0, 9, -6, 3, 0, 0], y: [0, 0, 4, -3, 1, 0, 0] }
+            : { x: 0, y: 0 }
+        }
+        transition={
+          active
+            ? loopOf([0, 0.445, 0.455, 0.47, 0.488, 0.52, 1], [LINEAR, EASE_HIT, EASE_HIT, EASE_HIT, EASE_HIT, LINEAR])
+            : rest
         }
       >
-        {stick.map((shape) => (
+        {slate.map((shape) => (
           <LogoShapeElement key={shape.id} shape={shape} prefix={prefix} />
         ))}
+
+        <m.g
+          initial={false}
+          animate={
+            active
+              ? { rotate: [0, 4, open, open, 0, 0], scale: [1, 1, 1, 0.965, 1, 1] }
+              : { rotate: 0, scale: 1 }
+          }
+          transition={
+            active
+              ? {
+                  rotate: loopOf([0, 0.03, 0.26, 0.388, 0.445, 1], [EASE_IN, EASE_SOFT, LINEAR, EASE_CLOSE, LINEAR]),
+                  scale: loopOf([0, 0.445, 0.452, 0.48, 0.52, 1], [LINEAR, EASE_HIT, EASE_HIT, LINEAR, LINEAR]),
+                }
+              : rest
+          }
+          transformTemplate={({ rotate, scale }) =>
+            `translate(${HINGE.x}px, ${HINGE.y}px) rotate(${rotate}) scale(${scale}) translate(${-HINGE.x}px, ${-HINGE.y}px)`
+          }
+        >
+          {stick.map((shape) => (
+            <LogoShapeElement key={shape.id} shape={shape} prefix={prefix} />
+          ))}
+        </m.g>
+
+        <m.g
+          pointerEvents="none"
+          initial={false}
+          animate={
+            active
+              ? { opacity: [0, 0, 1, 0.55, 0, 0], scale: [0.35, 0.35, 1.12, 0.82, 0.4, 0.35] }
+              : { opacity: 0, scale: 0.35 }
+          }
+          transition={
+            active
+              ? loopOf([0, 0.442, 0.45, 0.475, 0.53, 1], [LINEAR, EASE_HIT, EASE_HIT, EASE_SOFT, LINEAR])
+              : rest
+          }
+          transformTemplate={({ scale }) =>
+            `translate(${HINGE.x}px, ${HINGE.y}px) scale(${scale}) translate(${-HINGE.x}px, ${-HINGE.y}px)`
+          }
+          style={{ mixBlendMode: "plus-lighter" }}
+        >
+          <polygon points="889.92,738 1118,756 889.92,774" fill="#F5F2F5" />
+          <polygon points="889.92,748 1048,728 904,756" fill="#8D2168" />
+          <polygon points="889.92,764 1048,784 904,756" fill="#8D2168" />
+          <circle cx={HINGE.x} cy={HINGE.y} r="20" fill="#F5F2F5" />
+        </m.g>
       </m.g>
 
       <g clipPath={`url(#${prefix}-symbol)`} pointerEvents="none">
@@ -143,11 +161,10 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
             width="380"
             height="2400"
             fill={`url(#${prefix}-sheen)`}
-            initial={{ x: -700, opacity: 0 }}
-            animate={
-              active && pose === "shut" && hasOpened
-                ? { x: 2900, opacity: 1, transition: { duration: 0.38, delay: 0.02, ease: EASE_IN_OUT } }
-                : { x: -700, opacity: 0, transition: { duration: 0.15 } }
+            initial={false}
+            animate={active ? { x: [-800, -800, -800, 2900, 2900], opacity: [0, 0, 1, 0.35, 0] } : { x: -800, opacity: 0 }}
+            transition={
+              active ? loopOf([0, 0.442, 0.445, 0.53, 1], [LINEAR, LINEAR, EASE_SOFT, LINEAR]) : rest
             }
           />
         </g>
