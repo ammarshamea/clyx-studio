@@ -88,10 +88,11 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
   const bottomRotation = useMotionValue(0);
 
   useEffect(() => {
-    const rotateTimes = [0, 0.12, 0.38, 0.46, 0.56, 1];
-    const rotateEase = [LINEAR, EASE_OUT, EASE_SNAP, LINEAR, EASE_OUT];
-    const topKeys = [0, 0, CLOSE * 0.86, CLOSE, CLOSE, 0];
-    const bottomKeys = [0, 0, -CLOSE * 0.86, -CLOSE, -CLOSE, 0];
+    // One close segment (0 → CLOSE); avoid 86% + snap keyframes that read as a double clap.
+    const rotateTimes = [0, 0.12, 0.46, 0.56, 1];
+    const rotateEase = [LINEAR, EASE_SNAP, LINEAR, EASE_OUT];
+    const topKeys = [0, 0, CLOSE, CLOSE, 0];
+    const bottomKeys = [0, 0, -CLOSE, -CLOSE, 0];
 
     let controls: AnimationPlaybackControls[] = [];
 
