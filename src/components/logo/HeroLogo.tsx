@@ -13,7 +13,8 @@ const LAND = 0.28;
 type Bezier = [number, number, number, number];
 const LINEAR: Bezier = [0, 0, 1, 1];
 const EASE_OUT: Bezier = [0.16, 1, 0.3, 1];
-const EASE_SNAP: Bezier = [0.82, 0, 0.98, 0.05];
+/** Ease-in close: steady acceleration, no late snap (avoids “double clap” feel). */
+const EASE_CLOSE: Bezier = [0.55, 0, 1, 1];
 const SOFT: Bezier = [0.33, 1, 0.68, 1];
 
 /** Symmetric close (~24.3°): inner edges meet at the hub seam. */
@@ -88,10 +89,10 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
   const bottomRotation = useMotionValue(0);
 
   useEffect(() => {
-    const rotateTimes = [0, 0.12, 0.38, 0.46, 0.56, 1];
-    const rotateEase = [LINEAR, EASE_OUT, EASE_SNAP, LINEAR, EASE_OUT];
-    const topKeys = [0, 0, CLOSE * 0.86, CLOSE, CLOSE, 0];
-    const bottomKeys = [0, 0, -CLOSE * 0.86, -CLOSE, -CLOSE, 0];
+    const rotateTimes = [0, 0.12, 0.46, 0.56, 1];
+    const rotateEase = [LINEAR, EASE_CLOSE, LINEAR, EASE_OUT];
+    const topKeys = [0, 0, CLOSE, CLOSE, 0];
+    const bottomKeys = [0, 0, -CLOSE, -CLOSE, 0];
 
     let controls: AnimationPlaybackControls[] = [];
 
@@ -101,11 +102,14 @@ export function HeroLogo({ live, section, title, className }: HeroLogoProps) {
         animate(bottomRotation, 0, { duration: 0.32, ease: SOFT }),
       ];
     } else {
+      topRotation.set(0);
+      bottomRotation.set(0);
       const shared = {
         duration: LOOP,
         times: rotateTimes,
         ease: rotateEase,
         repeat: Infinity,
+        repeatType: "loop" as const,
         delay: LAND,
       };
       controls = [animate(topRotation, topKeys, shared), animate(bottomRotation, bottomKeys, shared)];
